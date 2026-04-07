@@ -2,7 +2,7 @@
   <Teleport to="body">
     <div class="modal-backdrop" @click.self="$emit('close')">
       <div class="modal-content" style="min-width: 420px;">
-        <h3 class="modal-title">New Bookmark</h3>
+        <h3 class="modal-title">{{ isEdit ? 'Edit Bookmark' : 'New Bookmark' }}</h3>
 
         <div class="form-group">
           <label>URL</label>
@@ -63,15 +63,12 @@
 
         <div class="form-group">
           <label>Open Mode</label>
-          <select v-model="form.open_mode">
-            <option value="_blank">New Tab</option>
-            <option value="_self">Current Tab</option>
-          </select>
+          <GlassSelect v-model="form.open_mode" :options="openModeOptions" />
         </div>
 
         <div class="btn-row">
           <button class="btn btn-secondary" @click="$emit('close')">Cancel</button>
-          <button class="btn btn-primary" @click="submit" :disabled="!form.url.trim() || !form.title.trim()">Add</button>
+          <button class="btn btn-primary" @click="submit" :disabled="!form.url.trim() || !form.title.trim()">{{ isEdit ? 'Save' : 'Add' }}</button>
         </div>
       </div>
     </div>
@@ -79,14 +76,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
-import { fetchFavicon, uploadFile } from '../api'
+import { ref, reactive, computed, watch } from 'vue'
+import { fetchFavicon, uploadFile, type Card } from '../api'
+import GlassSelect from './GlassSelect.vue'
 
-const props = defineProps<{ groupId: number }>()
+const openModeOptions = [
+  { value: '_blank', label: 'New Tab' },
+  { value: '_self', label: 'Current Tab' },
+]
+
+const props = defineProps<{
+  groupId: number
+  editCard?: Card | null
+}>()
 const emit = defineEmits<{
   close: []
   create: [card: { group_id: number; title: string; url: string; icon_type: string; icon_value: string; icon_bg_color: string; open_mode: string }]
+  update: [payload: { id: number; group_id: number; title: string; url: string; icon_type: string; icon_value: string; icon_bg_color: string; open_mode: string }]
 }>()
+
+const isEdit = computed(() => !!props.editCard)
 
 const presetColors = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#64748b']
 
@@ -102,6 +111,21 @@ const form = reactive({
 const fetching = ref(false)
 const fileInput = ref<HTMLInputElement>()
 const uploadPreview = ref('')
+
+watch(
+  () => props.editCard,
+  (card) => {
+    if (!card) return
+    form.url = card.url
+    form.title = card.title
+    form.icon_type = card.icon_type
+    form.icon_value = card.icon_value
+    form.icon_bg_color = card.icon_bg_color || '#6366f1'
+    form.open_mode = card.open_mode
+    uploadPreview.value = card.icon_type === 'upload' ? `/api/uploads/${card.icon_value}` : ''
+  },
+  { immediate: true }
+)
 
 const onUrlBlur = () => {
   if (form.url && !form.title) {
@@ -146,15 +170,21 @@ const submit = () => {
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
     url = 'https://' + url
   }
-  emit('create', {
+  const icon_value = form.icon_type === 'letter' ? form.title[0]?.toUpperCase() || '?' : form.icon_value
+  const payload = {
     group_id: props.groupId,
     title: form.title.trim(),
     url,
     icon_type: form.icon_type,
-    icon_value: form.icon_type === 'letter' ? form.title[0]?.toUpperCase() || '?' : form.icon_value,
+    icon_value,
     icon_bg_color: form.icon_bg_color,
     open_mode: form.open_mode,
-  })
+  }
+  if (props.editCard) {
+    emit('update', { id: props.editCard.id, ...payload })
+  } else {
+    emit('create', payload)
+  }
 }
 </script>
 

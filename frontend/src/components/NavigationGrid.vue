@@ -14,6 +14,7 @@
         @add-card="$emit('addCard', $event)"
         @delete-group="$emit('deleteGroup', $event)"
         @delete-card="$emit('deleteCard', $event)"
+        @edit-card="$emit('editCard', $event)"
         @updated="$emit('updated')"
       />
     </VueDraggable>
@@ -35,7 +36,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { VueDraggable } from 'vue-draggable-plus'
-import type { Group } from '../api'
+import type { Group, Card } from '../api'
 import { reorderGroups } from '../api'
 import { useEditMode } from '../composables/useEditMode'
 import CardGroup from './CardGroup.vue'
@@ -46,6 +47,7 @@ const emit = defineEmits<{
   addCard: [groupId: number]
   deleteGroup: [groupId: number]
   deleteCard: [cardId: number]
+  editCard: [card: Card]
   updated: []
 }>()
 

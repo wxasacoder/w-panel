@@ -41,18 +41,18 @@ func main() {
 	// API routes
 	api := r.Group("/api")
 	{
-		// Groups
+		// Groups（固定路径须写在 /:id 之前，避免 reorder 被当成 id）
 		api.GET("/groups", handlers.ListGroups)
 		api.POST("/groups", handlers.CreateGroup)
+		api.PUT("/groups/reorder", handlers.ReorderGroups)
 		api.PUT("/groups/:id", handlers.UpdateGroup)
 		api.DELETE("/groups/:id", handlers.DeleteGroup)
-		api.PUT("/groups/reorder", handlers.ReorderGroups)
 
 		// Cards
 		api.POST("/cards", handlers.CreateCard)
+		api.PUT("/cards/reorder", handlers.ReorderCards)
 		api.PUT("/cards/:id", handlers.UpdateCard)
 		api.DELETE("/cards/:id", handlers.DeleteCard)
-		api.PUT("/cards/reorder", handlers.ReorderCards)
 
 		// Search
 		api.GET("/search", handlers.SearchCards)

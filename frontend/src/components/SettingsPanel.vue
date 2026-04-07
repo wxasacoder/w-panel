@@ -44,10 +44,7 @@
 
         <div class="form-group">
           <label>Weather Effect</label>
-          <select :value="weatherEffect" @change="onWeatherChange">
-            <option value="none">None</option>
-            <option value="rain">Rain</option>
-          </select>
+          <GlassSelect :model-value="weatherEffect" :options="weatherOptions" @update:model-value="setWeatherEffect" />
         </div>
 
         <div class="btn-row">
@@ -62,6 +59,12 @@
 import { ref, onMounted } from 'vue'
 import { getThemes, uploadFile, type ThemeInfo } from '../api'
 import { useTheme } from '../composables/useTheme'
+import GlassSelect from './GlassSelect.vue'
+
+const weatherOptions = [
+  { value: 'none', label: 'None' },
+  { value: 'rain', label: 'Rain' },
+]
 
 defineEmits<{ close: [] }>()
 
@@ -97,10 +100,6 @@ const onBlurChange = (e: Event) => {
   document.documentElement.style.setProperty('--user-blur-level', `${val}px`)
   clearTimeout(blurTimeout)
   blurTimeout = setTimeout(() => setBlurLevel(val), 300)
-}
-
-const onWeatherChange = (e: Event) => {
-  setWeatherEffect((e.target as HTMLSelectElement).value)
 }
 
 const onBgSelect = async (e: Event) => {

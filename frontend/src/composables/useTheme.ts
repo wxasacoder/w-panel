@@ -16,6 +16,10 @@ export interface ThemeVars {
   '--bg-overlay': string
   '--accent-color': string
   '--glass-reflection': string
+  '--glass-reflection-hover': string
+  '--card-hover-glow': string
+  /** 随鼠标移动的高光层不透明度，flat 主题为 0 */
+  '--glass-cursor-shine-opacity': string
   [key: string]: string
 }
 
@@ -33,7 +37,8 @@ const liquidGlassVars: ThemeVars = {
   '--card-radius': '20px',
   '--card-backdrop-blur': '40px',
   '--card-hover-transform': 'translateY(-2px) scale(1.02)',
-  '--card-hover-shadow': '0 12px 40px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.4)',
+  '--card-hover-shadow': '0 12px 40px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.45)',
+  '--card-hover-glow': '0 0 28px rgba(255, 255, 255, 0.14)',
   '--group-title-color': 'rgba(255, 255, 255, 0.9)',
   '--group-title-font': "600 1.1rem -apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif",
   '--text-primary': 'rgba(255, 255, 255, 0.95)',
@@ -41,6 +46,9 @@ const liquidGlassVars: ThemeVars = {
   '--bg-overlay': 'rgba(0, 0, 0, 0.15)',
   '--accent-color': '#007AFF',
   '--glass-reflection': 'linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.1) 100%)',
+  '--glass-reflection-hover':
+    'linear-gradient(125deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.08) 45%, rgba(255,255,255,0.06) 100%)',
+  '--glass-cursor-shine-opacity': '0.92',
 }
 
 const flatVars: ThemeVars = {
@@ -51,6 +59,7 @@ const flatVars: ThemeVars = {
   '--card-backdrop-blur': '10px',
   '--card-hover-transform': 'translateY(-1px)',
   '--card-hover-shadow': '0 4px 16px rgba(0, 0, 0, 0.1)',
+  '--card-hover-glow': 'none',
   '--group-title-color': 'rgba(30, 30, 30, 0.85)',
   '--group-title-font': "600 1.05rem -apple-system, 'Inter', 'Helvetica Neue', sans-serif",
   '--text-primary': 'rgba(30, 30, 30, 0.9)',
@@ -58,6 +67,8 @@ const flatVars: ThemeVars = {
   '--bg-overlay': 'rgba(245, 245, 247, 0.6)',
   '--accent-color': '#5856D6',
   '--glass-reflection': 'none',
+  '--glass-reflection-hover': 'none',
+  '--glass-cursor-shine-opacity': '0',
 }
 
 const themes: Record<string, ThemeVars> = {

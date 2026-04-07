@@ -16,6 +16,7 @@
       @add-card="onAddCard"
       @delete-group="onDeleteGroup"
       @delete-card="onDeleteCard"
+      @edit-card="onEditCard"
       @updated="loadGroups"
     />
 
@@ -32,15 +33,22 @@
 
     <!-- Dialogs -->
     <AddGroupDialog v-if="showAddGroup" @close="showAddGroup = false" @create="onCreateGroup" />
-    <AddCardDialog v-if="addCardGroupId !== null" :group-id="addCardGroupId" @close="addCardGroupId = null" @create="onCreateCard" />
+    <AddCardDialog
+      v-if="addCardGroupId !== null || editingCard !== null"
+      :group-id="cardDialogGroupId"
+      :edit-card="editingCard"
+      @close="closeCardDialog"
+      @create="onCreateCard"
+      @update="onUpdateCard"
+    />
     <SettingsPanel v-if="showSettings" @close="showSettings = false" />
     <SearchDialog ref="searchRef" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { getGroups, createGroup, createCard, deleteGroup, deleteCard, type Group } from './api'
+import { ref, computed, onMounted } from 'vue'
+import { getGroups, createGroup, createCard, updateCard, deleteGroup, deleteCard, type Group, type Card } from './api'
 import { useEditMode } from './composables/useEditMode'
 import { useTheme } from './composables/useTheme'
 import NavigationGrid from './components/NavigationGrid.vue'
@@ -57,6 +65,11 @@ const { backgroundImage, weatherEffect, loadSettings } = useTheme()
 const groups = ref<Group[]>([])
 const showAddGroup = ref(false)
 const addCardGroupId = ref<number | null>(null)
+const editingCard = ref<Card | null>(null)
+
+const cardDialogGroupId = computed(() =>
+  editingCard.value ? editingCard.value.group_id : addCardGroupId.value!
+)
 const showSettings = ref(false)
 const searchRef = ref<InstanceType<typeof SearchDialog>>()
 // Keep searchRef for future programmatic access
@@ -71,7 +84,18 @@ const loadGroups = async () => {
 }
 
 const onAddCard = (groupId: number) => {
+  editingCard.value = null
   addCardGroupId.value = groupId
+}
+
+const onEditCard = (card: Card) => {
+  addCardGroupId.value = null
+  editingCard.value = card
+}
+
+const closeCardDialog = () => {
+  addCardGroupId.value = null
+  editingCard.value = null
 }
 
 const onCreateGroup = async (name: string) => {
@@ -87,10 +111,30 @@ const onCreateGroup = async (name: string) => {
 const onCreateCard = async (card: Parameters<typeof createCard>[0]) => {
   try {
     await createCard(card)
-    addCardGroupId.value = null
+    closeCardDialog()
     await loadGroups()
   } catch (e) {
     console.error('Failed to create card:', e)
+  }
+}
+
+const onUpdateCard = async (payload: {
+  id: number
+  group_id: number
+  title: string
+  url: string
+  icon_type: string
+  icon_value: string
+  icon_bg_color: string
+  open_mode: string
+}) => {
+  try {
+    const { id, ...body } = payload
+    await updateCard(id, body)
+    closeCardDialog()
+    await loadGroups()
+  } catch (e) {
+    console.error('Failed to update card:', e)
   }
 }
 
@@ -129,6 +173,8 @@ onMounted(async () => {
   position: fixed;
   inset: 0;
   z-index: 0;
+  /* 不拦截点击，否则全屏 fixed 层会盖住普通流里的导航网格，Add Group / 卡片等无法点击 */
+  pointer-events: none;
 }
 
 .bg-image {

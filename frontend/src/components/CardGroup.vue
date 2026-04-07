@@ -19,7 +19,7 @@
       ghost-class="ghost"
       @end="onDragEnd"
     >
-      <BookmarkCard v-for="card in cards" :key="card.id" :card="card" @delete="$emit('deleteCard', $event)" />
+      <BookmarkCard v-for="card in cards" :key="card.id" :card="card" @delete="$emit('deleteCard', $event)" @edit="$emit('editCard', $event)" />
     </VueDraggable>
   </div>
 </template>
@@ -27,7 +27,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { VueDraggable } from 'vue-draggable-plus'
-import type { Group } from '../api'
+import type { Group, Card } from '../api'
 import { reorderCards } from '../api'
 import { useEditMode } from '../composables/useEditMode'
 import BookmarkCard from './BookmarkCard.vue'
@@ -37,6 +37,7 @@ const emit = defineEmits<{
   addCard: [groupId: number]
   deleteGroup: [groupId: number]
   deleteCard: [cardId: number]
+  editCard: [card: Card]
   updated: []
 }>()
 
