@@ -1,0 +1,20 @@
+# Binary
+w-panel
+
+# Data
+data/
+
+# IDE
+.idea/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# OS
+.DS_Store
+*.swp
+*.swo
+
+# Qoder
+.qoder/

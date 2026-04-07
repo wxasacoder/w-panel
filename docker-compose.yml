@@ -1,0 +1,18 @@
+services:
+  w-panel:
+    build: .
+    container_name: w-panel
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DATA_DIR=/app/data
+      - PORT=8080
+    networks:
+      - wx
+
+networks:
+  wx:
+    external: true
