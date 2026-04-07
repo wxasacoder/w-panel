@@ -7,7 +7,7 @@
     </div>
 
     <!-- Rain effect -->
-    <RainEffect :active="weatherEffect === 'rain'" />
+    <RainEffect :active="weatherEffect === 'rain'" :intensity="rainIntensity" />
 
     <!-- Main content -->
     <NavigationGrid
@@ -60,7 +60,7 @@ import SearchDialog from './components/SearchDialog.vue'
 import RainEffect from './components/RainEffect.vue'
 
 const { editMode } = useEditMode()
-const { backgroundImage, weatherEffect, loadSettings } = useTheme()
+const { backgroundImage, weatherEffect, rainIntensity, loadSettings } = useTheme()
 
 const groups = ref<Group[]>([])
 const showAddGroup = ref(false)
@@ -173,20 +173,22 @@ onMounted(async () => {
   position: fixed;
   inset: 0;
   z-index: 0;
-  /* 不拦截点击，否则全屏 fixed 层会盖住普通流里的导航网格，Add Group / 卡片等无法点击 */
   pointer-events: none;
+  overflow: hidden;
 }
 
 .bg-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  filter: blur(var(--wallpaper-blur-px, 0px));
+  transform: scale(1.06);
 }
 
 .bg-overlay {
   position: absolute;
   inset: 0;
-  background: var(--bg-overlay, rgba(0, 0, 0, 0.15));
+  background: rgba(0, 0, 0, 0.08);
 }
 
 .settings-btn {

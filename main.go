@@ -18,11 +18,10 @@ import (
 var frontendFS embed.FS
 
 func main() {
-	// Determine data directory
+	// Determine data directory (use cwd-relative path so go run . keeps data stable)
 	dataDir := os.Getenv("DATA_DIR")
 	if dataDir == "" {
-		exe, _ := os.Executable()
-		dataDir = filepath.Join(filepath.Dir(exe), "data")
+		dataDir = filepath.Join(".", "data")
 	}
 
 	// Initialize database
@@ -64,6 +63,11 @@ func main() {
 		// Upload
 		api.POST("/upload", handlers.UploadFile)
 		api.GET("/uploads/:id", handlers.ServeUpload)
+
+		// Wallpapers
+		api.GET("/wallpapers", handlers.ListWallpapers)
+		api.POST("/wallpapers", handlers.AddWallpaper)
+		api.DELETE("/wallpapers/:id", handlers.DeleteWallpaper)
 
 		// Favicon
 		api.GET("/favicon", handlers.FetchFavicon)

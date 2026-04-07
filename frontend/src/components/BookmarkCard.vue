@@ -4,20 +4,89 @@
     :target="card.open_mode"
     class="bookmark-card"
     :class="{ 'edit-mode': editMode }"
+    :style="cardDynamicStyle"
     @click.prevent="handleClick"
     @mousemove="onCardMouseMove"
     @mouseleave="onCardMouseLeave"
   >
-    <div class="card-reflection"></div>
-    <div class="card-shine" :style="specularStyle" aria-hidden="true"></div>
+    <!-- SVG displacement filter (invisible, provides glass distortion) -->
+    <svg class="glass-filter-svg" :aria-hidden="true">
+      <defs>
+        <filter :id="filterId" x="-35%" y="-35%" width="170%" height="170%" colorInterpolationFilters="sRGB">
+          <feImage
+            x="0" y="0" width="100%" height="100%" result="DISPLACEMENT_MAP"
+            :href="displacementMapUrl" preserveAspectRatio="xMidYMid slice"
+          />
+          <feColorMatrix
+            in="DISPLACEMENT_MAP" type="matrix"
+            values="0.3 0.3 0.3 0 0  0.3 0.3 0.3 0 0  0.3 0.3 0.3 0 0  0 0 0 1 0"
+            result="EDGE_INTENSITY"
+          />
+          <feComponentTransfer in="EDGE_INTENSITY" result="EDGE_MASK">
+            <feFuncA type="discrete" :tableValues="`0 ${glassAberration * 0.05} 1`" />
+          </feComponentTransfer>
+          <feOffset in="SourceGraphic" dx="0" dy="0" result="CENTER_ORIGINAL" />
+          <feDisplacementMap
+            in="SourceGraphic" in2="DISPLACEMENT_MAP" :scale="-glassDisplacementScale"
+            xChannelSelector="R" yChannelSelector="B" result="RED_DISPLACED"
+          />
+          <feColorMatrix
+            in="RED_DISPLACED" type="matrix"
+            values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"
+            result="RED_CHANNEL"
+          />
+          <feDisplacementMap
+            in="SourceGraphic" in2="DISPLACEMENT_MAP"
+            :scale="-glassDisplacementScale - glassAberration * 0.05 * glassDisplacementScale"
+            xChannelSelector="R" yChannelSelector="B" result="GREEN_DISPLACED"
+          />
+          <feColorMatrix
+            in="GREEN_DISPLACED" type="matrix"
+            values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0"
+            result="GREEN_CHANNEL"
+          />
+          <feDisplacementMap
+            in="SourceGraphic" in2="DISPLACEMENT_MAP"
+            :scale="-glassDisplacementScale - glassAberration * 0.1 * glassDisplacementScale"
+            xChannelSelector="R" yChannelSelector="B" result="BLUE_DISPLACED"
+          />
+          <feColorMatrix
+            in="BLUE_DISPLACED" type="matrix"
+            values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0"
+            result="BLUE_CHANNEL"
+          />
+          <feBlend in="GREEN_CHANNEL" in2="BLUE_CHANNEL" mode="screen" result="GB_COMBINED" />
+          <feBlend in="RED_CHANNEL" in2="GB_COMBINED" mode="screen" result="RGB_COMBINED" />
+          <feGaussianBlur
+            in="RGB_COMBINED" :stdDeviation="Math.max(0.1, 0.5 - glassAberration * 0.1)"
+            result="ABERRATED_BLURRED"
+          />
+          <feComposite in="ABERRATED_BLURRED" in2="EDGE_MASK" operator="in" result="EDGE_ABERRATION" />
+          <feComponentTransfer in="EDGE_MASK" result="INVERTED_MASK">
+            <feFuncA type="table" tableValues="1 0" />
+          </feComponentTransfer>
+          <feComposite in="CENTER_ORIGINAL" in2="INVERTED_MASK" operator="in" result="CENTER_CLEAN" />
+          <feComposite in="EDGE_ABERRATION" in2="CENTER_CLEAN" operator="over" />
+        </filter>
+      </defs>
+    </svg>
 
-    <div class="card-icon" :style="iconStyle">
-      <img v-if="card.icon_type === 'favicon' || card.icon_type === 'upload'" :src="iconSrc" @error="iconError = true" />
-      <span v-else class="letter-icon">{{ letterChar }}</span>
-    </div>
-    <div class="card-info">
-      <span class="card-title">{{ card.title }}</span>
-      <span class="card-url">{{ displayUrl }}</span>
+    <!-- Glass warp layer: backdrop-filter captures background, SVG filter adds displacement -->
+    <span class="glass-warp" :style="warpStyle" />
+
+    <!-- Tinted background layer (separate from filter to avoid displacement artifacts) -->
+    <span class="glass-tint" :style="tintStyle" />
+
+    <!-- Card content -->
+    <div class="card-inner">
+      <div class="card-icon" :style="iconStyle">
+        <img v-if="card.icon_type === 'favicon' || card.icon_type === 'upload'" :src="iconSrc" @error="iconError = true" />
+        <span v-else class="letter-icon">{{ letterChar }}</span>
+      </div>
+      <div class="card-info">
+        <span class="card-title">{{ card.title }}</span>
+        <span class="card-url">{{ displayUrl }}</span>
+      </div>
     </div>
 
     <button v-if="editMode" type="button" class="card-edit" @click.stop.prevent="emit('edit', card)" title="Edit">
@@ -33,11 +102,23 @@
 import { computed, ref } from 'vue'
 import type { Card } from '../api'
 import { useEditMode } from '../composables/useEditMode'
+import { useTheme } from '../composables/useTheme'
+import { DISPLACEMENT_MAP_URL } from '../config/liquidGlassOptions'
 
 const props = defineProps<{ card: Card }>()
 const emit = defineEmits<{ delete: [id: number]; edit: [card: Card] }>()
 
 const { editMode } = useEditMode()
+const {
+  glassDisplacementScale, glassBlurAmount, glassSaturation,
+  glassAberration, glassCornerRadius,
+} = useTheme()
+
+const displacementMapUrl = DISPLACEMENT_MAP_URL
+
+const instanceId = Math.random().toString(36).slice(2, 9)
+const filterId = `glass-filter-${instanceId}`
+
 const iconError = ref(false)
 
 const letterChar = computed(() => {
@@ -66,25 +147,40 @@ const displayUrl = computed(() => {
   }
 })
 
-const specularStyle = ref<Record<string, string>>({
-  '--spec-x': '50%',
-  '--spec-y': '50%',
-})
+const warpStyle = computed(() => ({
+  filter: `url(#${filterId})`,
+  backdropFilter: `blur(${4 + glassBlurAmount.value * 32}px) saturate(${glassSaturation.value}%)`,
+}))
+
+const tintStyle = computed(() => ({
+  background: 'var(--card-bg-user, var(--card-bg))',
+}))
+
+const MAX_TILT = 8
+const LIFT = 6
+
+const cardDynamicStyle = ref<Record<string, string>>({})
 
 function onCardMouseMove(e: MouseEvent) {
   if (editMode.value) return
   const el = e.currentTarget as HTMLElement
   const r = el.getBoundingClientRect()
-  const x = ((e.clientX - r.left) / r.width) * 100
-  const y = ((e.clientY - r.top) / r.height) * 100
-  specularStyle.value = {
-    '--spec-x': `${Math.max(0, Math.min(100, x))}%`,
-    '--spec-y': `${Math.max(0, Math.min(100, y))}%`,
+  const nx = (e.clientX - r.left) / r.width
+  const ny = (e.clientY - r.top) / r.height
+
+  const tiltX = (0.5 - ny) * MAX_TILT
+  const tiltY = (nx - 0.5) * MAX_TILT
+  const shadowX = Math.round((0.5 - nx) * 14)
+  const shadowY = Math.round(8 + ny * 8)
+
+  cardDynamicStyle.value = {
+    transform: `perspective(800px) rotateX(${tiltX.toFixed(1)}deg) rotateY(${tiltY.toFixed(1)}deg) translateZ(${LIFT}px)`,
+    'box-shadow': `${shadowX}px ${shadowY}px 40px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.4)`,
   }
 }
 
 function onCardMouseLeave() {
-  specularStyle.value = { '--spec-x': '50%', '--spec-y': '50%' }
+  cardDynamicStyle.value = {}
 }
 
 const handleClick = () => {
@@ -95,80 +191,57 @@ const handleClick = () => {
 
 <style scoped lang="scss">
 .bookmark-card {
-  display: flex;
-  align-items: center;
-  gap: 14px;
+  display: block;
   width: 100%;
   min-width: 0;
-  padding: 14px 18px;
-  background: var(--card-bg);
-  border: var(--card-border);
-  border-radius: var(--card-radius);
-  box-shadow: var(--card-shadow);
-  backdrop-filter: blur(var(--card-backdrop-blur, 40px));
-  -webkit-backdrop-filter: blur(var(--card-backdrop-blur, 40px));
-  opacity: var(--user-card-opacity, 0.8);
   cursor: pointer;
   text-decoration: none;
+  position: relative;
+  overflow: hidden;
+  border-radius: v-bind('glassCornerRadius + "px"');
+  box-shadow:
+    0 0 0 0.5px rgba(255, 255, 255, 0.2) inset,
+    0 1px 1px rgba(255, 255, 255, 0.15) inset,
+    0 8px 32px rgba(0, 0, 0, 0.12);
   transition:
     transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
     box-shadow 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-
-  &:hover:not(.edit-mode) {
-    transform: var(--card-hover-transform);
-    box-shadow: var(--card-hover-shadow), var(--card-hover-glow, none);
-  }
+  will-change: transform, box-shadow;
 
   &.edit-mode {
     cursor: grab;
-
-    &:active {
-      cursor: grabbing;
-    }
+    &:active { cursor: grabbing; }
   }
 }
 
-.card-reflection {
+.glass-filter-svg {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.glass-warp {
   position: absolute;
   inset: 0;
-  background: var(--glass-reflection, none);
   pointer-events: none;
-  border-radius: inherit;
-  transition: background 0.45s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.45s ease;
 }
 
-.bookmark-card:hover:not(.edit-mode) .card-reflection {
-  background: var(--glass-reflection-hover, var(--glass-reflection, none));
-}
-
-.card-shine {
+.glass-tint {
   position: absolute;
   inset: 0;
-  border-radius: inherit;
   pointer-events: none;
-  z-index: 0;
-  opacity: 0;
-  transition: opacity 0.35s ease;
-  background:
-    radial-gradient(
-      circle 14% at var(--spec-x, 50%) var(--spec-y, 50%),
-      rgba(255, 255, 255, 0.85) 0%,
-      rgba(255, 255, 255, 0.2) 45%,
-      transparent 52%
-    ),
-    radial-gradient(
-      circle 30% at var(--spec-x, 50%) var(--spec-y, 50%),
-      rgba(255, 255, 255, 0.28) 0%,
-      rgba(255, 255, 255, 0.06) 50%,
-      transparent 62%
-    );
-  mix-blend-mode: overlay;
 }
 
-.bookmark-card:hover:not(.edit-mode) .card-shine {
-  opacity: var(--glass-cursor-shine-opacity, 0);
+.card-inner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+  padding: 14px 18px;
 }
 
 .card-icon {
@@ -181,8 +254,6 @@ const handleClick = () => {
   justify-content: center;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.1);
-  position: relative;
-  z-index: 1;
 
   img {
     width: 28px;
@@ -205,8 +276,6 @@ const handleClick = () => {
   gap: 3px;
   min-width: 0;
   flex: 1;
-  position: relative;
-  z-index: 1;
 }
 
 .card-title {
@@ -241,7 +310,7 @@ const handleClick = () => {
   opacity: 0;
   transform: scale(0.8);
   transition: all 0.2s ease;
-  z-index: 2;
+  z-index: 10;
 
   .edit-mode & {
     opacity: 1;
@@ -254,14 +323,8 @@ const handleClick = () => {
   background: rgba(0, 122, 255, 0.85);
   color: white;
 
-  &:hover {
-    background: rgba(0, 122, 255, 1);
-    transform: scale(1.1);
-  }
-
-  .edit-mode &:hover {
-    transform: scale(1.1);
-  }
+  &:hover { background: rgba(0, 122, 255, 1); transform: scale(1.1); }
+  .edit-mode &:hover { transform: scale(1.1); }
 }
 
 .card-delete {
@@ -269,13 +332,7 @@ const handleClick = () => {
   background: rgba(255, 59, 48, 0.8);
   color: white;
 
-  &:hover {
-    background: rgba(255, 59, 48, 1);
-    transform: scale(1.1);
-  }
-
-  .edit-mode &:hover {
-    transform: scale(1.1);
-  }
+  &:hover { background: rgba(255, 59, 48, 1); transform: scale(1.1); }
+  .edit-mode &:hover { transform: scale(1.1); }
 }
 </style>

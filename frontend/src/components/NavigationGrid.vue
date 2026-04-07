@@ -74,6 +74,8 @@ const onGroupDragEnd = async () => {
 
 <style scoped lang="scss">
 .navigation-grid {
+  position: relative;
+  z-index: 1;
   padding: 40px 48px 100px;
   max-width: 1400px;
   margin: 0 auto;
@@ -89,17 +91,23 @@ const onGroupDragEnd = async () => {
   justify-content: center;
   gap: 8px;
   padding: 20px;
-  border: 2px dashed rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 16px;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.75);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
   margin-top: 8px;
+  background: rgba(30, 30, 50, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 
   &:hover {
+    background: rgba(40, 40, 65, 0.85);
     border-color: rgba(255, 255, 255, 0.3);
-    color: rgba(255, 255, 255, 0.7);
-    background: rgba(255, 255, 255, 0.04);
+    transform: translateY(-2px);
+    color: white;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
   }
 
   span {

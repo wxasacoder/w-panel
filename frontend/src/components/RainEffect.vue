@@ -6,7 +6,7 @@
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { RainRenderer } from '../effects/rain'
 
-const props = defineProps<{ active: boolean }>()
+const props = defineProps<{ active: boolean; intensity?: number }>()
 const canvasRef = ref<HTMLCanvasElement>()
 let renderer: RainRenderer | null = null
 
@@ -14,7 +14,7 @@ const onResize = () => renderer?.resize()
 
 onMounted(() => {
   if (canvasRef.value) {
-    renderer = new RainRenderer(canvasRef.value)
+    renderer = new RainRenderer(canvasRef.value, props.intensity ?? 1.0)
     if (props.active) renderer.start()
     window.addEventListener('resize', onResize)
   }
@@ -28,6 +28,10 @@ onUnmounted(() => {
 watch(() => props.active, (val) => {
   if (val) renderer?.start()
   else renderer?.stop()
+})
+
+watch(() => props.intensity, (val) => {
+  renderer?.setIntensity(val ?? 1.0)
 })
 </script>
 

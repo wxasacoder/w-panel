@@ -65,12 +65,28 @@ func migrate() error {
 			data BLOB NOT NULL,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,
+		`CREATE TABLE IF NOT EXISTS wallpapers (
+			id TEXT PRIMARY KEY,
+			upload_id TEXT NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
 		// Default settings
 		`INSERT OR IGNORE INTO settings (key, value) VALUES ('theme', 'liquid-glass')`,
 		`INSERT OR IGNORE INTO settings (key, value) VALUES ('background_image', '')`,
-		`INSERT OR IGNORE INTO settings (key, value) VALUES ('card_opacity', '0.8')`,
-		`INSERT OR IGNORE INTO settings (key, value) VALUES ('blur_level', '20')`,
+		`INSERT OR IGNORE INTO settings (key, value) VALUES ('card_opacity', '15')`,
+		`INSERT OR IGNORE INTO settings (key, value) VALUES ('blur_level', '40')`,
 		`INSERT OR IGNORE INTO settings (key, value) VALUES ('weather_effect', 'none')`,
+		`INSERT OR IGNORE INTO settings (key, value) VALUES ('rain_intensity', '1.0')`,
+		`INSERT OR IGNORE INTO settings (key, value) VALUES ('wallpaper_blur', '15')`,
+		`INSERT OR IGNORE INTO settings (key, value) VALUES ('text_color', '')`,
+		`INSERT OR IGNORE INTO settings (key, value) VALUES ('text_opacity', '')`,
+		`INSERT OR IGNORE INTO settings (key, value) VALUES ('card_color', '')`,
+		`INSERT OR IGNORE INTO settings (key, value) VALUES ('glass_displacement_scale', '70')`,
+		`INSERT OR IGNORE INTO settings (key, value) VALUES ('glass_blur_amount', '0.5')`,
+		`INSERT OR IGNORE INTO settings (key, value) VALUES ('glass_saturation', '140')`,
+		`INSERT OR IGNORE INTO settings (key, value) VALUES ('glass_aberration', '2')`,
+		`INSERT OR IGNORE INTO settings (key, value) VALUES ('glass_elasticity', '0.15')`,
+		`INSERT OR IGNORE INTO settings (key, value) VALUES ('glass_corner_radius', '20')`,
 	}
 
 	for _, m := range migrations {

@@ -41,6 +41,17 @@ export interface Settings {
   card_opacity: string
   blur_level: string
   weather_effect: string
+  rain_intensity: string
+  wallpaper_blur: string
+  text_color: string
+  text_opacity: string
+  card_color: string
+  glass_displacement_scale: string
+  glass_blur_amount: string
+  glass_saturation: string
+  glass_aberration: string
+  glass_elasticity: string
+  glass_corner_radius: string
   [key: string]: string
 }
 
@@ -86,6 +97,16 @@ export const uploadFile = async (file: File): Promise<UploadResponse> => {
   if (!res.ok) throw new Error('Upload failed')
   return res.json()
 }
+
+// Wallpapers
+export interface WallpaperItem {
+  id: string
+  url: string
+  created_at: string
+}
+export const getWallpapers = () => request<WallpaperItem[]>('/wallpapers')
+export const addWallpaper = (upload_id: string) => request<WallpaperItem>('/wallpapers', { method: 'POST', body: JSON.stringify({ upload_id }) })
+export const deleteWallpaper = (id: string) => request<{ message: string; cleared_background: boolean }>(`/wallpapers/${id}`, { method: 'DELETE' })
 
 // Favicon
 export const fetchFavicon = (url: string) => request<{ icon_url: string }>(`/favicon?url=${encodeURIComponent(url)}`)

@@ -2,13 +2,14 @@
   <Teleport to="body">
     <div class="modal-backdrop" @click.self="$emit('close')">
       <div class="modal-content" style="min-width: 420px;">
+        <form @submit.prevent="submit">
         <h3 class="modal-title">{{ isEdit ? 'Edit Bookmark' : 'New Bookmark' }}</h3>
 
         <div class="form-group">
           <label>URL</label>
           <div class="url-row">
             <input v-model="form.url" placeholder="https://example.com" @blur="onUrlBlur" />
-            <button class="btn btn-secondary fetch-btn" @click="fetchIcon" :disabled="fetching" title="Fetch icon">
+            <button type="button" class="btn btn-secondary fetch-btn" @click="fetchIcon" :disabled="fetching" title="Fetch icon">
               <svg v-if="!fetching" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 8a6 6 0 1112 0A6 6 0 012 8z" stroke="currentColor" stroke-width="1.2"/><path d="M8 5v3l2 1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
               <span v-else class="spinner"></span>
             </button>
@@ -23,9 +24,9 @@
         <div class="form-group">
           <label>Icon Mode</label>
           <div class="icon-mode-tabs">
-            <button :class="{ active: form.icon_type === 'letter' }" @click="form.icon_type = 'letter'">Letter</button>
-            <button :class="{ active: form.icon_type === 'favicon' }" @click="form.icon_type = 'favicon'">Favicon</button>
-            <button :class="{ active: form.icon_type === 'upload' }" @click="form.icon_type = 'upload'">Upload</button>
+            <button type="button" :class="{ active: form.icon_type === 'letter' }" @click="form.icon_type = 'letter'">Letter</button>
+            <button type="button" :class="{ active: form.icon_type === 'favicon' }" @click="form.icon_type = 'favicon'">Favicon</button>
+            <button type="button" :class="{ active: form.icon_type === 'upload' }" @click="form.icon_type = 'upload'">Upload</button>
           </div>
         </div>
 
@@ -33,6 +34,7 @@
           <label>Background Color</label>
           <div class="color-picker">
             <button
+              type="button"
               v-for="color in presetColors"
               :key="color"
               :style="{ background: color }"
@@ -67,16 +69,17 @@
         </div>
 
         <div class="btn-row">
-          <button class="btn btn-secondary" @click="$emit('close')">Cancel</button>
-          <button class="btn btn-primary" @click="submit" :disabled="!form.url.trim() || !form.title.trim()">{{ isEdit ? 'Save' : 'Add' }}</button>
+          <button type="button" class="btn btn-secondary" @click="$emit('close')">Cancel</button>
+          <button type="submit" class="btn btn-primary" :disabled="!form.url.trim() || !form.title.trim()">{{ isEdit ? 'Save' : 'Add' }}</button>
         </div>
+        </form>
       </div>
     </div>
   </Teleport>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { fetchFavicon, uploadFile, type Card } from '../api'
 import GlassSelect from './GlassSelect.vue'
 
@@ -94,6 +97,18 @@ const emit = defineEmits<{
   create: [card: { group_id: number; title: string; url: string; icon_type: string; icon_value: string; icon_bg_color: string; open_mode: string }]
   update: [payload: { id: number; group_id: number; title: string; url: string; icon_type: string; icon_value: string; icon_bg_color: string; open_mode: string }]
 }>()
+
+const onKeydown = (e: KeyboardEvent) => {
+  if (e.key === 'Escape') emit('close')
+}
+
+onMounted(() => {
+  document.addEventListener('keydown', onKeydown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', onKeydown)
+})
 
 const isEdit = computed(() => !!props.editCard)
 
