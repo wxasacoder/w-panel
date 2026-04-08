@@ -29,7 +29,7 @@
 import { computed } from 'vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import type { Group, Card } from '../api'
-import { reorderCards } from '../api'
+import { reorderCards, updateCard } from '../api'
 import { useEditMode } from '../composables/useEditMode'
 import BookmarkCard from './BookmarkCard.vue'
 
@@ -53,11 +53,13 @@ const cards = computed({
 
 const onDragEnd = async (evt: any) => {
   try {
-    const sourceIds = cards.value.map(c => c.id)
-
     if (evt.from !== evt.to) {
-      // Cross-group move: update both source and destination groups
+      const movedCardId = Number(evt.item.dataset.cardId)
       const destGroupId = Number(evt.to.dataset.groupId)
+
+      await updateCard(movedCardId, { group_id: destGroupId })
+
+      const sourceIds = cards.value.map(c => c.id)
       const destCardEls = evt.to.querySelectorAll('[data-card-id]')
       const destCardIds = Array.from(destCardEls).map((el: any) => Number(el.dataset.cardId))
 
@@ -66,13 +68,12 @@ const onDragEnd = async (evt: any) => {
         reorderCards(destGroupId, destCardIds)
       ])
     } else {
-      // Same-group reorder
-      await reorderCards(props.group.id, sourceIds)
+      await reorderCards(props.group.id, cards.value.map(c => c.id))
     }
-
     emit('updated')
   } catch (e) {
     console.error('Failed to reorder cards:', e)
+    emit('updated')
   }
 }
 </script>

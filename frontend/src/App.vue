@@ -14,7 +14,7 @@
             result="EDGE_INTENSITY"
           />
           <feComponentTransfer in="EDGE_INTENSITY" result="EDGE_MASK">
-            <feFuncA type="discrete" :tableValues="`0 ${glassAberration * 0.15} 1`" />
+            <feFuncA type="discrete" :tableValues="`0 ${Math.min(1, glassAberration * 0.4)} 1`" />
           </feComponentTransfer>
           <feOffset in="SourceGraphic" dx="0" dy="0" result="CENTER_ORIGINAL" />
           <feDisplacementMap
@@ -28,7 +28,7 @@
           />
           <feDisplacementMap
             in="SourceGraphic" in2="DISPLACEMENT_MAP"
-            :scale="-glassDisplacementScale - glassAberration * 0.15 * glassDisplacementScale"
+            :scale="-glassDisplacementScale - glassAberration * 0.35 * glassDisplacementScale"
             xChannelSelector="R" yChannelSelector="B" result="GREEN_DISPLACED"
           />
           <feColorMatrix
@@ -38,7 +38,7 @@
           />
           <feDisplacementMap
             in="SourceGraphic" in2="DISPLACEMENT_MAP"
-            :scale="-glassDisplacementScale - glassAberration * 0.3 * glassDisplacementScale"
+            :scale="-glassDisplacementScale - glassAberration * 0.7 * glassDisplacementScale"
             xChannelSelector="R" yChannelSelector="B" result="BLUE_DISPLACED"
           />
           <feColorMatrix
@@ -133,7 +133,7 @@ const { isLinuxChrome } = usePerformance()
 const displacementMapUrl = DISPLACEMENT_MAP_URL
 const filterStdDeviation = computed(() => {
   const base = Math.max(0.1, 1.0 - glassAberration.value * 0.15)
-  return isLinuxChrome.value ? Math.max(0.1, base * 0.5) : base
+  return isLinuxChrome.value ? Math.max(0.1, base * 0.7) : base
 })
 
 const groups = ref<Group[]>([])
