@@ -8,11 +8,8 @@ function detect() {
   if (detected.value) return
   detected.value = true
 
-  const ua = navigator.userAgent
-  const linux = /Linux/.test(ua) && !/Android/.test(ua)
-  const chrome = /Chrome\//.test(ua) && !/Edg\//.test(ua)
-
-  isLinuxChrome.value = linux && chrome
+  // 全平台沿用 Linux Chrome 性能预设（模糊强度、悬停才挂 SVG 滤镜等）
+  isLinuxChrome.value = true
 
   if (isLinuxChrome.value) {
     blurCoefficient.value = 16
