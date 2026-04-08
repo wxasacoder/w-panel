@@ -5,22 +5,6 @@
         <h3 class="modal-title">Settings</h3>
 
         <div class="form-group">
-          <label>Theme</label>
-          <div class="theme-cards">
-            <div
-              v-for="theme in themes"
-              :key="theme.id"
-              class="theme-card"
-              :class="{ active: currentTheme === theme.id }"
-              @click="setTheme(theme.id)"
-            >
-              <div class="theme-preview" :class="theme.id"></div>
-              <span>{{ theme.name }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="form-group">
           <label>Wallpaper</label>
           <div class="bg-controls">
             <button class="btn btn-secondary" @click="bgFileInput?.click()">Upload Image</button>
@@ -35,7 +19,7 @@
               :class="{ active: backgroundImage === wp.url }"
               @click="selectWallpaper(wp)"
             >
-              <img :src="wp.url" />
+              <img :src="wp.url + '/thumbnail'" />
               <button class="wallpaper-delete" @click.stop="removeWallpaper(wp)" title="Delete">
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
               </button>
@@ -60,11 +44,6 @@
             <span class="color-value">{{ cardColor || 'Theme default' }}</span>
             <button v-if="cardColor" class="btn btn-small btn-secondary" @click="resetCardSettings">Reset</button>
           </div>
-        </div>
-
-        <div class="form-group">
-          <label>Glass Blur: {{ blurLevel }}px</label>
-          <input type="range" min="0" max="200" step="2" :value="blurLevel" @input="onBlurChange" class="slider" />
         </div>
 
         <div class="form-group glass-section">
@@ -129,7 +108,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { getThemes, uploadFile, getWallpapers, addWallpaper, deleteWallpaper, type ThemeInfo, type WallpaperItem } from '../api'
+import { uploadFile, getWallpapers, addWallpaper, deleteWallpaper, type WallpaperItem } from '../api'
 import { useTheme } from '../composables/useTheme'
 import GlassSelect from './GlassSelect.vue'
 
@@ -153,12 +132,11 @@ onUnmounted(() => {
 })
 
 const {
-  currentTheme, cardOpacity, blurLevel, backgroundImage, weatherEffect, rainIntensity, wallpaperBlur, textColor, textOpacity, cardColor,
+  cardOpacity, backgroundImage, weatherEffect, rainIntensity, wallpaperBlur, textColor, textOpacity, cardColor,
   glassDisplacementScale, glassBlurAmount, glassSaturation, glassAberration, glassElasticity, glassCornerRadius,
-  setTheme, setCardOpacity, setCardColor, resetCardSettings, setBlurLevel, setBackgroundImage, setWeatherEffect, setRainIntensity, setWallpaperBlur, setTextColor, setTextOpacity, resetTextSettings, setGlassParam,
+  setCardOpacity, setCardColor, resetCardSettings, setBackgroundImage, setWeatherEffect, setRainIntensity, setWallpaperBlur, setTextColor, setTextOpacity, resetTextSettings, setGlassParam,
 } = useTheme()
 
-const themes = ref<ThemeInfo[]>([])
 const wallpapers = ref<WallpaperItem[]>([])
 const bgFileInput = ref<HTMLInputElement>()
 
@@ -175,11 +153,6 @@ const loadWallpapers = async () => {
 }
 
 onMounted(async () => {
-  try {
-    themes.value = await getThemes()
-  } catch (e) {
-    console.error('Failed to load themes:', e)
-  }
   await loadWallpapers()
 })
 
@@ -197,15 +170,6 @@ const onCardColorChange = (e: Event) => {
   cardColor.value = val
   clearTimeout(cardColorTimeout)
   cardColorTimeout = setTimeout(() => setCardColor(val), 200)
-}
-
-let blurTimeout: ReturnType<typeof setTimeout>
-const onBlurChange = (e: Event) => {
-  const val = parseInt((e.target as HTMLInputElement).value)
-  blurLevel.value = val
-  document.documentElement.style.setProperty('--card-backdrop-blur', `${val}px`)
-  clearTimeout(blurTimeout)
-  blurTimeout = setTimeout(() => setBlurLevel(val), 300)
 }
 
 const glassTimeouts: Record<string, ReturnType<typeof setTimeout>> = {}
@@ -295,55 +259,6 @@ const clearBg = () => {
 .settings-panel {
   width: 520px;
   max-width: 90vw;
-}
-
-.theme-cards {
-  display: flex;
-  gap: 10px;
-}
-
-.theme-card {
-  flex: 1;
-  padding: 12px;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.04);
-  cursor: pointer;
-  transition: all 0.2s;
-  text-align: center;
-
-  &.active {
-    border-color: var(--accent-color, #007AFF);
-    background: rgba(0, 122, 255, 0.08);
-  }
-
-  &:hover:not(.active) {
-    border-color: rgba(255, 255, 255, 0.2);
-    background: rgba(255, 255, 255, 0.06);
-  }
-
-  span {
-    display: block;
-    margin-top: 8px;
-    font-size: 0.82rem;
-    color: rgba(255, 255, 255, 0.7);
-  }
-}
-
-.theme-preview {
-  height: 48px;
-  border-radius: 8px;
-
-  &.liquid-glass {
-    background: linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04));
-    border: 1px solid rgba(255,255,255,0.2);
-    backdrop-filter: blur(10px);
-  }
-
-  &.flat {
-    background: rgba(255,255,255,0.8);
-    border: 1px solid rgba(0,0,0,0.08);
-  }
 }
 
 .bg-controls {

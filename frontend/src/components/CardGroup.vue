@@ -109,8 +109,8 @@ const onDragEnd = async (evt: any) => {
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   background: rgba(30, 30, 50, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: var(--ui-blur, blur(20px));
+  -webkit-backdrop-filter: var(--ui-blur, blur(20px));
   color: rgba(255, 255, 255, 0.75);
   display: flex;
   align-items: center;

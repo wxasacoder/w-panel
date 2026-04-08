@@ -98,8 +98,8 @@ const onGroupDragEnd = async () => {
   transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
   margin-top: 8px;
   background: rgba(30, 30, 50, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: var(--ui-blur, blur(20px));
+  -webkit-backdrop-filter: var(--ui-blur, blur(20px));
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 
   &:hover {

@@ -63,6 +63,7 @@ func main() {
 		// Upload
 		api.POST("/upload", handlers.UploadFile)
 		api.GET("/uploads/:id", handlers.ServeUpload)
+		api.GET("/uploads/:id/thumbnail", handlers.ServeUploadThumbnail)
 
 		// Wallpapers
 		api.GET("/wallpapers", handlers.ListWallpapers)

@@ -22,13 +22,6 @@ var builtInThemes = []ThemeInfo{
 		Author:      "W-Panel",
 		BuiltIn:     true,
 	},
-	{
-		ID:          "flat",
-		Name:        "Flat",
-		Description: "Clean, minimal flat design with solid colors and subtle transparency",
-		Author:      "W-Panel",
-		BuiltIn:     true,
-	},
 }
 
 func ListThemes(c *gin.Context) {

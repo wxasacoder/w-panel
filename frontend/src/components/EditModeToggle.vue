@@ -29,8 +29,8 @@ const { editMode, toggle } = useEditMode()
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 16px;
   background: rgba(30, 30, 50, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: var(--ui-blur, blur(20px));
+  -webkit-backdrop-filter: var(--ui-blur, blur(20px));
   color: rgba(255, 255, 255, 0.75);
   cursor: pointer;
   font-size: 0.85rem;
