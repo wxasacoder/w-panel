@@ -2,6 +2,9 @@
 
 局域网可用的个人导航页：分组书签、毛玻璃视觉、天气动效与本地持久化。无登录，默认展示模式，通过右下角开关进入编辑模式。
 
+
+<img width="1506" height="814" alt="image" src="https://github.com/user-attachments/assets/8e3f15c3-7a4c-4c49-be74-d28d89a9597b" />
+
 ---
 
 ## 产品定位与信息架构
