@@ -4,12 +4,17 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
+	"w-panel/internal/database"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"golang.org/x/net/html"
 )
+
+const maxFaviconSize = 2 << 20
 
 func FetchFavicon(c *gin.Context) {
 	rawURL := c.Query("url")
@@ -28,16 +33,17 @@ func FetchFavicon(c *gin.Context) {
 	// Try to fetch the page and parse for icon links
 	iconURL := findIconFromHTML(client, rawURL)
 	if iconURL != "" {
-		c.JSON(http.StatusOK, gin.H{"icon_url": iconURL})
-		return
+		if localURL := fetchAndStoreFavicon(client, iconURL); localURL != "" {
+			c.JSON(http.StatusOK, gin.H{"icon_url": localURL})
+			return
+		}
 	}
 
 	// Fallback: try /favicon.ico
 	baseURL := extractBaseURL(rawURL)
 	faviconURL := baseURL + "/favicon.ico"
-	resp, err := client.Head(faviconURL)
-	if err == nil && resp.StatusCode == 200 {
-		c.JSON(http.StatusOK, gin.H{"icon_url": faviconURL})
+	if localURL := fetchAndStoreFavicon(client, faviconURL); localURL != "" {
+		c.JSON(http.StatusOK, gin.H{"icon_url": localURL})
 		return
 	}
 
@@ -62,7 +68,6 @@ func findIconFromHTML(client *http.Client, pageURL string) string {
 		return ""
 	}
 
-	baseURL := extractBaseURL(pageURL)
 	var iconURL string
 	var findIcon func(*html.Node)
 	findIcon = func(n *html.Node) {
@@ -77,13 +82,7 @@ func findIconFromHTML(client *http.Client, pageURL string) string {
 				}
 			}
 			if href != "" && (strings.Contains(rel, "icon") || strings.Contains(rel, "shortcut")) {
-				if strings.HasPrefix(href, "//") {
-					href = "https:" + href
-				} else if strings.HasPrefix(href, "/") {
-					href = baseURL + href
-				} else if !strings.HasPrefix(href, "http") {
-					href = baseURL + "/" + href
-				}
+				href = resolveURL(pageURL, href)
 				// Prefer apple-touch-icon or larger icons
 				if strings.Contains(rel, "apple-touch-icon") || iconURL == "" {
 					iconURL = href
@@ -97,6 +96,59 @@ func findIconFromHTML(client *http.Client, pageURL string) string {
 	findIcon(doc)
 
 	return iconURL
+}
+
+func fetchAndStoreFavicon(client *http.Client, iconURL string) string {
+	resp, err := client.Get(iconURL)
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return ""
+	}
+
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxFaviconSize+1))
+	if err != nil || len(data) == 0 || len(data) > maxFaviconSize {
+		return ""
+	}
+
+	mimeType := imageMimeType(resp.Header.Get("Content-Type"), data)
+	if !strings.HasPrefix(mimeType, "image/") {
+		return ""
+	}
+
+	id := uuid.New().String()
+	_, err = database.DB.Exec(
+		`INSERT INTO uploads (id, filename, mime_type, data, created_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+		id, "favicon", mimeType, data,
+	)
+	if err != nil {
+		return ""
+	}
+
+	return "/api/uploads/" + id
+}
+
+func imageMimeType(contentType string, data []byte) string {
+	mimeType := strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
+	if strings.HasPrefix(mimeType, "image/") {
+		return mimeType
+	}
+	return http.DetectContentType(data)
+}
+
+func resolveURL(pageURL, href string) string {
+	base, err := url.Parse(pageURL)
+	if err != nil {
+		return href
+	}
+	ref, err := url.Parse(href)
+	if err != nil {
+		return href
+	}
+	return base.ResolveReference(ref).String()
 }
 
 func extractBaseURL(rawURL string) string {
