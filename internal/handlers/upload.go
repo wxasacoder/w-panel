@@ -149,14 +149,33 @@ func isSVGImage(mimeType, filename string, data []byte) bool {
 
 func hasSVGRoot(data []byte) bool {
 	sniff := string(data)
-	if len(sniff) > 512 {
-		sniff = sniff[:512]
+	if len(sniff) > 4096 {
+		sniff = sniff[:4096]
 	}
 	sniff = strings.TrimLeft(sniff, "\ufeff \t\r\n")
-	if strings.HasPrefix(sniff, "<?xml") {
-		if idx := strings.Index(sniff, "?>"); idx >= 0 {
+	for {
+		lower := strings.ToLower(sniff)
+		switch {
+		case strings.HasPrefix(lower, "<?xml"):
+			idx := strings.Index(sniff, "?>")
+			if idx < 0 {
+				return false
+			}
 			sniff = strings.TrimLeft(sniff[idx+2:], " \t\r\n")
+		case strings.HasPrefix(lower, "<!--"):
+			idx := strings.Index(sniff, "-->")
+			if idx < 0 {
+				return false
+			}
+			sniff = strings.TrimLeft(sniff[idx+3:], " \t\r\n")
+		case strings.HasPrefix(lower, "<!doctype"):
+			idx := strings.Index(sniff, ">")
+			if idx < 0 {
+				return false
+			}
+			sniff = strings.TrimLeft(sniff[idx+1:], " \t\r\n")
+		default:
+			return strings.HasPrefix(lower, "<svg")
 		}
 	}
-	return strings.HasPrefix(strings.ToLower(sniff), "<svg")
 }

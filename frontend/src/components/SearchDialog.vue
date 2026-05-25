@@ -114,7 +114,10 @@ const openCard = (card: Card) => {
 }
 
 const getIconSrc = (card: Card) => {
-  if (card.icon_type === 'upload') return `/api/uploads/${card.icon_value}`
+  if (card.icon_type === 'upload') {
+    const encoded = encodeURIComponent(card.icon_value)
+    return `/api/uploads/${encoded}?v=${encoded}`
+  }
   return card.icon_value
 }
 

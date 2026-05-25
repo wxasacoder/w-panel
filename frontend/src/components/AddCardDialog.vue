@@ -137,7 +137,7 @@ watch(
     form.icon_value = card.icon_value
     form.icon_bg_color = card.icon_bg_color || '#6366f1'
     form.open_mode = card.open_mode
-    uploadPreview.value = card.icon_type === 'upload' ? `/api/uploads/${card.icon_value}` : ''
+    uploadPreview.value = card.icon_type === 'upload' ? uploadIconSrc(card.icon_value) : ''
   },
   { immediate: true }
 )
@@ -166,6 +166,11 @@ const fetchIcon = async () => {
   fetching.value = false
 }
 
+function uploadIconSrc(id: string) {
+  const encoded = encodeURIComponent(id)
+  return `/api/uploads/${encoded}?v=${encoded}`
+}
+
 const onFileSelect = async (e: Event) => {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file) return
@@ -173,7 +178,7 @@ const onFileSelect = async (e: Event) => {
     const res = await uploadFile(file)
     form.icon_type = 'upload'
     form.icon_value = res.id
-    uploadPreview.value = res.url
+    uploadPreview.value = uploadIconSrc(res.id)
   } catch (e) {
     console.error('Upload failed:', e)
   }

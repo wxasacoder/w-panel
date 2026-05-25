@@ -19,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { Card } from '../api'
 import { useEditMode } from '../composables/useEditMode'
 
@@ -35,9 +35,24 @@ const letterChar = computed(() => {
 
 const iconSrc = computed(() => {
   if (iconError.value) return ''
-  if (props.card.icon_type === 'upload') return `/api/uploads/${props.card.icon_value}`
+  if (props.card.icon_type === 'upload') return uploadIconSrc(props.card.icon_value)
   return props.card.icon_value
 })
+
+const rawIconSrc = computed(() => {
+  if (props.card.icon_type === 'upload') return uploadIconSrc(props.card.icon_value)
+  if (props.card.icon_type === 'favicon') return props.card.icon_value
+  return ''
+})
+
+watch(rawIconSrc, () => {
+  iconError.value = false
+})
+
+function uploadIconSrc(id: string) {
+  const encoded = encodeURIComponent(id)
+  return `/api/uploads/${encoded}?v=${encoded}`
+}
 
 const iconStyle = computed(() => {
   if (props.card.icon_type === 'letter' || iconError.value) {

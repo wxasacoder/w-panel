@@ -25,6 +25,18 @@ func TestImageMimeTypeDetectsSVGByContent(t *testing.T) {
 	}
 }
 
+func TestImageMimeTypeDetectsSVGAfterComment(t *testing.T) {
+	data := []byte(`<?xml version="1.0"?>
+<!-- Created by a design tool -->
+<svg xmlns="http://www.w3.org/2000/svg"></svg>`)
+
+	got := imageMimeType("application/octet-stream", "icon.svg", data)
+
+	if got != "image/svg+xml" {
+		t.Fatalf("imageMimeType() = %q, want image/svg+xml", got)
+	}
+}
+
 func TestImageMimeTypeKeepsRasterImage(t *testing.T) {
 	pngHeader := []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR")
 
