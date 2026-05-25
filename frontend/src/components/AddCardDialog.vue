@@ -59,7 +59,7 @@
           <div class="upload-area" @click="fileInput?.click()">
             <img v-if="uploadPreview" :src="uploadPreview" class="upload-preview" />
             <span v-else>Click to upload</span>
-            <input ref="fileInput" type="file" accept="image/*" @change="onFileSelect" hidden />
+            <input ref="fileInput" type="file" accept="image/*,.svg" @change="onFileSelect" hidden />
           </div>
         </div>
 

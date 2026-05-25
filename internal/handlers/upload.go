@@ -7,6 +7,8 @@ import (
 	_ "image/png"
 	"io"
 	"net/http"
+	"path/filepath"
+	"strings"
 	"w-panel/internal/database"
 	"w-panel/internal/models"
 
@@ -30,7 +32,11 @@ func UploadFile(c *gin.Context) {
 	}
 
 	id := uuid.New().String()
-	mimeType := http.DetectContentType(data)
+	mimeType := imageMimeType(header.Header.Get("Content-Type"), header.Filename, data)
+	if !strings.HasPrefix(mimeType, "image/") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "only image uploads are supported"})
+		return
+	}
 
 	_, err = database.DB.Exec(
 		`INSERT INTO uploads (id, filename, mime_type, data, created_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`,
@@ -50,14 +56,16 @@ func UploadFile(c *gin.Context) {
 func ServeUpload(c *gin.Context) {
 	id := c.Param("id")
 
+	var filename string
 	var mimeType string
 	var data []byte
-	err := database.DB.QueryRow(`SELECT mime_type, data FROM uploads WHERE id = ?`, id).Scan(&mimeType, &data)
+	err := database.DB.QueryRow(`SELECT filename, mime_type, data FROM uploads WHERE id = ?`, id).Scan(&filename, &mimeType, &data)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
 		return
 	}
 
+	mimeType = imageMimeType(mimeType, filename, data)
 	c.Header("Cache-Control", "public, max-age=31536000, immutable")
 	c.Data(http.StatusOK, mimeType, data)
 }
@@ -65,11 +73,19 @@ func ServeUpload(c *gin.Context) {
 func ServeUploadThumbnail(c *gin.Context) {
 	id := c.Param("id")
 
+	var filename string
 	var mimeType string
 	var data []byte
-	err := database.DB.QueryRow(`SELECT mime_type, data FROM uploads WHERE id = ?`, id).Scan(&mimeType, &data)
+	err := database.DB.QueryRow(`SELECT filename, mime_type, data FROM uploads WHERE id = ?`, id).Scan(&filename, &mimeType, &data)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+		return
+	}
+
+	mimeType = imageMimeType(mimeType, filename, data)
+	if isSVGImage(mimeType, filename, data) {
+		c.Header("Cache-Control", "public, max-age=31536000, immutable")
+		c.Data(http.StatusOK, mimeType, data)
 		return
 	}
 
@@ -104,4 +120,43 @@ func ServeUploadThumbnail(c *gin.Context) {
 
 	c.Header("Cache-Control", "public, max-age=31536000, immutable")
 	c.Data(http.StatusOK, "image/jpeg", buf.Bytes())
+}
+
+func imageMimeType(contentType, filename string, data []byte) string {
+	declared := strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
+	detected := strings.ToLower(strings.TrimSpace(strings.Split(http.DetectContentType(data), ";")[0]))
+	if isSVGImage(declared, filename, data) || isSVGImage(detected, filename, data) {
+		return "image/svg+xml"
+	}
+	if strings.HasPrefix(detected, "image/") {
+		return detected
+	}
+	return detected
+}
+
+func isSVGImage(mimeType, filename string, data []byte) bool {
+	if mimeType == "image/svg+xml" {
+		return hasSVGRoot(data)
+	}
+	if strings.EqualFold(filepath.Ext(filename), ".svg") {
+		return hasSVGRoot(data)
+	}
+	if mimeType == "text/xml" || mimeType == "application/xml" || mimeType == "text/plain" || mimeType == "" {
+		return hasSVGRoot(data)
+	}
+	return false
+}
+
+func hasSVGRoot(data []byte) bool {
+	sniff := string(data)
+	if len(sniff) > 512 {
+		sniff = sniff[:512]
+	}
+	sniff = strings.TrimLeft(sniff, "\ufeff \t\r\n")
+	if strings.HasPrefix(sniff, "<?xml") {
+		if idx := strings.Index(sniff, "?>"); idx >= 0 {
+			sniff = strings.TrimLeft(sniff[idx+2:], " \t\r\n")
+		}
+	}
+	return strings.HasPrefix(strings.ToLower(sniff), "<svg")
 }

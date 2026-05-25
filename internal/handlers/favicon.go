@@ -114,7 +114,7 @@ func fetchAndStoreFavicon(client *http.Client, iconURL string) string {
 		return ""
 	}
 
-	mimeType := imageMimeType(resp.Header.Get("Content-Type"), data)
+	mimeType := imageMimeType(resp.Header.Get("Content-Type"), iconURL, data)
 	if !strings.HasPrefix(mimeType, "image/") {
 		return ""
 	}
@@ -129,14 +129,6 @@ func fetchAndStoreFavicon(client *http.Client, iconURL string) string {
 	}
 
 	return "/api/uploads/" + id
-}
-
-func imageMimeType(contentType string, data []byte) string {
-	mimeType := strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
-	if strings.HasPrefix(mimeType, "image/") {
-		return mimeType
-	}
-	return http.DetectContentType(data)
 }
 
 func resolveURL(pageURL, href string) string {
