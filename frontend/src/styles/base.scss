@@ -14,17 +14,33 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-body {
-  position: fixed;
-  inset: 0;
+html {
   background: #1a1a2e;
 }
 
+// Safari can expose the document canvas behind its translucent browser chrome.
+// Give that canvas the wallpaper too, rather than an opaque blue fixed body.
+html.has-wallpaper {
+  min-height: 100lvh;
+  background-color: transparent;
+  background-image: linear-gradient(rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.08)),
+    var(--page-wallpaper), linear-gradient(#1a1a2e, #1a1a2e);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+body {
+  background: transparent;
+}
+
 #app {
+  // Only the application is fixed. The root canvas remains available to Safari.
+  position: fixed;
+  inset: 0;
   width: 100%;
   height: 100%;
   height: 100dvh;
-  position: relative;
 }
 
 // Scrollbar styling

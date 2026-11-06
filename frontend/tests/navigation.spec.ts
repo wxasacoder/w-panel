@@ -66,10 +66,14 @@ for (const width of [320, 390, 844]) {
   })
 }
 
-test('desktop uses the full width and has no writes on load or settings open', async ({ page }) => {
+test('desktop keeps the centered 1400px layout and has no writes on load or settings open', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 })
   const writes = await prepare(page)
-  expect((await page.locator('.navigation-grid').boundingBox())!.width).toBeGreaterThan(1900)
+  const grid = (await page.locator('.navigation-grid').boundingBox())!
+  const scrollArea = (await page.locator('.app-scroll').boundingBox())!
+  expect(grid.width).toBe(1400)
+  // Allow for the reserved scrollbar gutter on the right.
+  expect(Math.abs(grid.x - (scrollArea.width - grid.width) / 2)).toBeLessThanOrEqual(6)
   await page.locator('.edit-toggle').click()
   await page.locator('.settings-btn').click()
   await expect(page.locator('.glass-preview .bookmark-card')).toBeVisible()
@@ -77,6 +81,34 @@ test('desktop uses the full width and has no writes on load or settings open', a
   expect(writes).toEqual([])
   const values = await page.locator('.glass-param input').evaluateAll(inputs => inputs.map(el => (el as HTMLInputElement).value))
   expect(values).toEqual(['135', '0.45', '120', '3', '0.85', '20'])
+})
+
+test('wallpaper reaches the document canvas without a fixed blue browser theme or settings writes', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 740 })
+  const writes = await prepare(page)
+  await expect(page.locator('html')).toHaveClass('has-wallpaper')
+  await expect(page.locator('html')).toHaveCSS('background-image', /test-wallpaper/)
+  await expect(page.locator('html')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+  await expect(page.locator('body')).toHaveCSS('position', 'static')
+  await expect(page.locator('meta[name="theme-color"]')).toHaveCount(0)
+  const manifest = await (await page.request.get('/manifest.webmanifest')).json()
+  expect(manifest.theme_color).toBeUndefined()
+  expect(manifest.display).toBe('standalone')
+  const background = (await page.locator('.app-background').boundingBox())!
+  expect(background.y).toBe(0)
+  expect(background.height).toBeGreaterThanOrEqual(740)
+  expect(writes).toEqual([])
+
+  // Clearing is an explicit user action: it restores the no-wallpaper fallback,
+  // and makes exactly the existing background_image update, with no other keys.
+  await page.locator('.edit-toggle').click()
+  await page.locator('.settings-btn').click()
+  await page.getByRole('button', { name: 'Clear', exact: true }).click()
+  await expect(page.locator('html')).not.toHaveClass('has-wallpaper')
+  await expect(page.locator('html')).toHaveCSS('background-image', 'none')
+  await expect(page.locator('html')).toHaveCSS('background-color', 'rgb(26, 26, 46)')
+  expect(writes).toEqual([{ background_image: '' }])
 })
 
 test('all six glass controls update the preview and save only the edited key', async ({ page }) => {

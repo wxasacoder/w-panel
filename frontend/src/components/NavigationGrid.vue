@@ -81,6 +81,7 @@ const onGroupDragEnd = async () => {
   z-index: 1;
   padding: calc(40px + env(safe-area-inset-top)) calc(48px + env(safe-area-inset-right)) calc(100px + env(safe-area-inset-bottom)) calc(48px + env(safe-area-inset-left));
   width: 100%;
+  max-width: 1400px;
   min-height: 100%;
   margin: 0 auto;
 

@@ -185,7 +185,13 @@ onMounted(async () => {
 
 .app-background {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  // Keep the wallpaper behind the browser's expanded/collapsed toolbar area.
+  // Bookmarks still use the visible (dynamic) viewport and scroll independently.
+  height: 100lvh;
   z-index: 0;
   pointer-events: none;
   overflow: hidden;

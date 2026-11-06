@@ -141,6 +141,15 @@ function applyTheme(themeId: string) {
 
 watch(currentTheme, (val) => applyTheme(val))
 
+// Presentation only: mirror the existing URL to the root canvas. Never persist
+// anything from this watcher, including when settings are loaded or cleared.
+watch(backgroundImage, (url) => {
+  const root = document.documentElement
+  root.classList.toggle('has-wallpaper', Boolean(url))
+  if (url) root.style.setProperty('--page-wallpaper', `url(${JSON.stringify(url)})`)
+  else root.style.removeProperty('--page-wallpaper')
+}, { immediate: true })
+
 export function useTheme() {
   const loadSettings = async () => {
     try {
