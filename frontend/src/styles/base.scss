@@ -34,6 +34,14 @@ body {
   background: transparent;
 }
 
+// Mobile Safari needs an opaque fallback even with a wallpaper; transparent
+// html/body falls back to white browser chrome. Desktop retains its own styles.
+@media (hover: none) and (pointer: coarse) {
+  html, html.has-wallpaper, body {
+    background-color: var(--mobile-page-color, #1a1a2e);
+  }
+}
+
 #app {
   // Only the application is fixed. The root canvas remains available to Safari.
   position: fixed;

@@ -83,7 +83,7 @@ test('desktop keeps the centered 1400px layout and has no writes on load or sett
   expect(values).toEqual(['135', '0.45', '120', '3', '0.85', '20'])
 })
 
-test('wallpaper reaches the document canvas without a fixed blue browser theme or settings writes', async ({ page }) => {
+test('desktop wallpaper canvas and no-wallpaper fallback stay unchanged without settings writes', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 740 })
   const writes = await prepare(page)
   await expect(page.locator('html')).toHaveClass('has-wallpaper')
@@ -186,4 +186,137 @@ test('small-screen settings stay within the viewport and scroll independently', 
   await page.getByRole('button', { name: 'Close', exact: true }).click()
   await expect(panel).toHaveCount(0)
   expect(await page.evaluate(() => window.scrollY)).toBe(0)
+})
+
+test('preview corner radius visibly clips the tilted SVG layer, not only its parent style', async ({ page }) => {
+  await prepare(page)
+  await page.locator('.edit-toggle').click()
+  await page.locator('.settings-btn').click()
+  const preview = page.locator('.glass-preview')
+  const card = preview.locator('.bookmark-card')
+  const radius = page.locator('.glass-param input').last()
+  const shots: Buffer[] = []
+  for (const value of ['0', '40']) {
+    await radius.fill(value)
+    await page.mouse.move(0, 0)
+    await expect(card.locator('.glass-warp')).toHaveCSS('clip-path', value === '0' ? 'inset(0px)' : `inset(0px round ${value}px)`)
+    shots.push(await preview.screenshot())
+  }
+  // Project a point 4px inside the unrounded corner through the real 3D tilt.
+  const point = await card.evaluate(el => {
+    const style = getComputedStyle(el)
+    const matrix = new DOMMatrix(style.transform)
+    const [ox, oy] = style.transformOrigin.split(' ').map(parseFloat)
+    const width = (el as HTMLElement).offsetWidth, height = (el as HTMLElement).offsetHeight
+    const project = (x: number, y: number) => {
+      const p = new DOMPoint(x - ox!, y - oy!, 0, 1).matrixTransform(matrix)
+      return { x: p.x / p.w + ox!, y: p.y / p.w + oy! }
+    }
+    const corners = [project(0, 0), project(width, 0), project(0, height), project(width, height)]
+    const p = project(4, 4), bounds = el.getBoundingClientRect(), panel = el.parentElement!.getBoundingClientRect()
+    return {
+      x: Math.round(bounds.x - panel.x + p.x - Math.min(...corners.map(c => c.x))),
+      y: Math.round(bounds.y - panel.y + p.y - Math.min(...corners.map(c => c.y))),
+    }
+  })
+  await card.evaluate(el => (el as HTMLElement).style.visibility = 'hidden')
+  shots.push(await preview.screenshot())
+  const [square, rounded, background] = await page.evaluate(async ({ images, point }) => {
+    return Promise.all(images.map(async base64 => {
+      const image = new Image(); image.src = `data:image/png;base64,${base64}`; await image.decode()
+      const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height
+      const ctx = canvas.getContext('2d')!; ctx.drawImage(image, 0, 0)
+      return Array.from(ctx.getImageData(point.x, point.y, 1, 1).data).slice(0, 3)
+    }))
+  }, { images: shots.map(image => image.toString('base64')), point })
+  const difference = (a: number[], b: number[]) => a.reduce((sum, value, i) => sum + Math.abs(value - b[i]!), 0)
+  expect(difference(square!, background!)).toBeGreaterThan(10)
+  expect(difference(rounded!, background!)).toBeLessThan(6)
+})
+
+test('mobile cards blend into the wallpaper at scroll edges without changing central glass or blocking taps', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 740 }, isMobile: true, hasTouch: true })
+  const page = await context.newPage()
+  const writes = await prepare(page)
+  const scroll = page.locator('.app-scroll')
+  const fade = page.locator('.mobile-scroll-fade')
+  await expect(fade).toHaveClass(/fade-bottom/)
+  await expect(fade).not.toHaveClass(/fade-top/)
+  await expect(fade).toHaveCSS('pointer-events', 'none')
+  // A mask on the scroll container would isolate descendant backdrop filters.
+  await expect(scroll).toHaveCSS('mask-image', 'none')
+  await scroll.evaluate(el => { el.scrollTop = 200 })
+  await expect(fade).toHaveClass(/fade-top/)
+  await expect(fade).toHaveClass(/fade-bottom/)
+  // The decorative copy must also retain the mobile browser's matching colors
+  // when Safari excludes images during fixed-layer color sampling.
+  await expect(page.locator('.mobile-scroll-fade-background')).toHaveCSS('background-color',
+    await page.locator('.mobile-browser-edge-top').evaluate(el => getComputedStyle(el).backgroundColor))
+  await expect(page.locator('.fade-browser-edge-bottom')).toHaveCSS('background-color',
+    await page.locator('.mobile-browser-edge-bottom').evaluate(el => getComputedStyle(el).backgroundColor))
+  await page.locator('.fade-bg-image').evaluate(el => (el as HTMLImageElement).decode())
+  const withFade = await page.screenshot()
+  const removeFade = await page.addStyleTag({ content: '.mobile-scroll-fade { display: none !important; }' })
+  const withoutFade = await page.screenshot()
+  const hideContent = await page.addStyleTag({ content: '.navigation-grid { visibility: hidden !important; }' })
+  const wallpaperOnly = await page.screenshot()
+  const differences = await page.evaluate(async images => {
+    const pixels = await Promise.all(images.map(async base64 => {
+      const image = new Image(); image.src = `data:image/png;base64,${base64}`; await image.decode()
+      const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height
+      const ctx = canvas.getContext('2d')!; ctx.drawImage(image, 0, 0)
+      return ctx.getImageData(0, 0, image.width, image.height)
+    }))
+    const [faded, original, background] = pixels
+    const differenceAt = (a: ImageData, b: ImageData, x: number, y: number) => {
+      const offset = (y * a.width + x) * 4
+      return [0, 1, 2].reduce((sum, channel) => sum + Math.abs(a.data[offset + channel]! - b.data[offset + channel]!), 0)
+    }
+    let centerDifference = 0, samples = 0
+    for (let y = 100; y < faded!.height - 100; y += 8) {
+      for (let x = 25; x < faded!.width - 25; x += 8) {
+        centerDifference += differenceAt(faded!, original!, x, y); samples++
+      }
+    }
+    return {
+      center: centerDifference / samples,
+      edges: [1, faded!.height - 2].map(y => ({
+        faded: differenceAt(faded!, background!, 240, y),
+        original: differenceAt(original!, background!, 240, y),
+      })),
+    }
+  }, [withFade, withoutFade, wallpaperOnly].map(image => image.toString('base64')))
+  expect(differences.center).toBeLessThan(1)
+  for (const edge of differences.edges) {
+    expect(edge.original).toBeGreaterThan(10)
+    expect(edge.faded).toBeLessThan(edge.original / 4)
+  }
+  await hideContent.evaluate(el => el.remove())
+  await removeFade.evaluate(el => el.remove())
+
+  await scroll.evaluate(el => { el.scrollTop = el.scrollHeight })
+  await expect(fade).not.toHaveClass(/fade-bottom/)
+  const last = page.locator('.bookmark-card').last()
+  const box = (await last.boundingBox())!
+  expect(box.y).toBeGreaterThan(24)
+  expect(box.y + box.height).toBeLessThan(740)
+  expect(await last.evaluate(el => {
+    const bounds = el.getBoundingClientRect()
+    return document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)?.closest('.bookmark-card') === el
+  })).toBe(true)
+  await page.locator('.edit-toggle').click()
+  await expect(fade).toHaveCount(0)
+  expect(writes).toEqual([])
+  await context.close()
+})
+
+test('short mobile lists and desktop do not get scroll fades', async ({ browser, page }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 740 }, isMobile: true, hasTouch: true })
+  const mobile = await context.newPage()
+  await prepare(mobile, 1)
+  await expect(mobile.locator('.mobile-scroll-fade')).toHaveCount(0)
+  await prepare(page)
+  await page.locator('.app-scroll').evaluate(el => { el.scrollTop = 200 })
+  await expect(page.locator('.mobile-scroll-fade')).toHaveCount(0)
+  await context.close()
 })

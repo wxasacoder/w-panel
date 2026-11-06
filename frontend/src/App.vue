@@ -4,7 +4,14 @@
 
     <!-- Background -->
     <div class="app-background">
-      <img v-if="backgroundImage" :src="backgroundImage" class="bg-image" />
+      <!-- Safari excludes <img> content when sampling fixed edge colors. These
+           opaque backing strips are covered by the wallpaper in the actual UI. -->
+      <template v-if="mobileBrowser">
+        <div class="mobile-browser-edge mobile-browser-edge-top" aria-hidden="true"></div>
+        <div class="mobile-browser-edge mobile-browser-edge-bottom" aria-hidden="true"></div>
+      </template>
+      <img v-if="backgroundImage" ref="wallpaperRef" :src="backgroundImage" class="bg-image"
+        @load="refreshBrowserColors" @error="refreshBrowserColors" />
       <div class="bg-overlay"></div>
     </div>
 
@@ -12,7 +19,7 @@
     <RainEffect :active="weatherEffect === 'rain'" :intensity="rainIntensity" />
 
     <!-- Main content -->
-    <main class="app-scroll" tabindex="-1" aria-label="Bookmarks">
+    <main ref="viewportRef" class="app-scroll" tabindex="-1" aria-label="Bookmarks">
       <NavigationGrid
         :groups="groups"
         @add-group="showAddGroup = true"
@@ -23,6 +30,18 @@
         @updated="loadGroups"
       />
     </main>
+
+    <!-- Fade into an aligned copy of the wallpaper. Masking the scroll container
+         itself would create a backdrop root and change the cards' glass effect. -->
+    <div v-if="mobileBrowser && !editMode && (contentAbove || contentBelow)"
+      class="mobile-scroll-fade" :class="{ 'fade-top': contentAbove, 'fade-bottom': contentBelow }"
+      aria-hidden="true">
+      <div class="mobile-scroll-fade-background">
+        <div class="fade-browser-edge-bottom"></div>
+        <img v-if="backgroundImage" :src="backgroundImage" class="fade-bg-image" alt="" />
+        <div class="fade-bg-overlay"></div>
+      </div>
+    </div>
 
     <!-- Edit mode toggle -->
     <EditModeToggle />
@@ -55,6 +74,8 @@ import { ref, computed, onMounted } from 'vue'
 import { getGroups, createGroup, createCard, updateCard, deleteGroup, deleteCard, type Group, type Card } from './api'
 import { useEditMode } from './composables/useEditMode'
 import { useTheme } from './composables/useTheme'
+import { useMobileBrowserColors } from './composables/useMobileBrowserColors'
+import { useScrollEdges } from './composables/useScrollEdges'
 import GlassFilter from './components/GlassFilter.vue'
 import NavigationGrid from './components/NavigationGrid.vue'
 import EditModeToggle from './components/EditModeToggle.vue'
@@ -66,8 +87,16 @@ import RainEffect from './components/RainEffect.vue'
 
 const { editMode } = useEditMode()
 const {
-  backgroundImage, weatherEffect, rainIntensity, loadSettings,
+  backgroundImage, weatherEffect, rainIntensity, wallpaperBlur, loadSettings,
 } = useTheme()
+const wallpaperRef = ref<HTMLImageElement>()
+const viewportRef = ref<HTMLElement>()
+const { mobileBrowser, refreshBrowserColors } = useMobileBrowserColors(
+  wallpaperRef, viewportRef, backgroundImage, wallpaperBlur,
+)
+const { contentAbove, contentBelow } = useScrollEdges(
+  viewportRef, computed(() => mobileBrowser.value && !editMode.value),
+)
 const groups = ref<Group[]>([])
 const showAddGroup = ref(false)
 const addCardGroupId = ref<number | null>(null)
@@ -183,7 +212,8 @@ onMounted(async () => {
   scrollbar-gutter: stable;
 }
 
-.app-background {
+.app-background,
+.mobile-scroll-fade-background {
   position: fixed;
   top: 0;
   left: 0;
@@ -197,7 +227,8 @@ onMounted(async () => {
   overflow: hidden;
 }
 
-.bg-image {
+.bg-image,
+.fade-bg-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -205,10 +236,67 @@ onMounted(async () => {
   transform: scale(1.06);
 }
 
-.bg-overlay {
+.bg-overlay,
+.fade-bg-overlay {
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.08);
+}
+
+.mobile-scroll-fade { display: none; }
+
+@media (hover: none) and (pointer: coarse) {
+  .mobile-scroll-fade {
+    --edge-fade-top: 0px;
+    --edge-fade-bottom: 0px;
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    overflow: hidden;
+    pointer-events: none;
+    // Only the decorative wallpaper copy is masked, never the glass cards.
+    --edge-mask: linear-gradient(to bottom,
+      black 0, transparent var(--edge-fade-top),
+      transparent calc(100% - var(--edge-fade-bottom)), black 100%);
+    -webkit-mask-image: var(--edge-mask);
+    mask-image: var(--edge-mask);
+
+    &.fade-top { --edge-fade-top: calc(24px + env(safe-area-inset-top)); }
+    &.fade-bottom { --edge-fade-bottom: calc(48px + env(safe-area-inset-bottom)); }
+  }
+
+  .mobile-scroll-fade-background {
+    // Safari's sampler skips this image too; preserve the same edge colors
+    // underneath the decorative copy instead of reintroducing a blue fallback.
+    background: var(--mobile-wallpaper-top, #1a1a2e);
+  }
+
+  .mobile-browser-edge,
+  .fade-browser-edge-bottom {
+    position: fixed;
+    left: 0;
+    right: 0;
+    height: 12px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .mobile-browser-edge-top {
+    top: 0;
+    background-color: var(--mobile-wallpaper-top, #1a1a2e);
+  }
+
+  .mobile-browser-edge-bottom,
+  .fade-browser-edge-bottom {
+    bottom: 0;
+    background-color: var(--mobile-wallpaper-bottom, #1a1a2e);
+  }
+
+  // Normal rendering stays identical: the wallpaper covers the color strips.
+  // Keep filters on the image/cards, not on the solid surfaces Safari samples.
+  .bg-image, .fade-bg-image { position: relative; z-index: 1; }
+  .bg-overlay, .fade-bg-overlay { z-index: 2; }
 }
 
 .settings-btn {

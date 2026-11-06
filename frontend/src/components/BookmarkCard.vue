@@ -3,7 +3,7 @@
     :href="preview ? undefined : card.url"
     :target="card.open_mode"
     class="bookmark-card"
-    :class="{ 'edit-mode': editMode && !preview }"
+    :class="{ 'edit-mode': editMode && !preview, 'preview-card': preview }"
     :style="cardDynamicStyle"
     @click.prevent="handleClick"
     @pointermove="onCardPointerMove"
@@ -219,6 +219,18 @@ const handleClick = () => {
   position: absolute;
   inset: 0;
   pointer-events: none;
+}
+
+// The preview tilts even while editing. Clip the composited SVG output itself:
+// clipping only its transformed parent leaves square filter corners in browsers.
+// Keep this on the effect layer, so no new ancestor blocks backdrop sampling.
+.preview-card .glass-warp {
+  border-radius: inherit;
+  clip-path: v-bind('"inset(0 round " + glassCornerRadius + "px)"');
+}
+
+.preview-card .glass-tint {
+  border-radius: inherit;
 }
 
 .card-inner {
