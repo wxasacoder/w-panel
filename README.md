@@ -79,7 +79,7 @@ Liquid Glass 依赖 **`backdrop-filter`** 与 **复杂 SVG 滤镜链**（多张 
 
 - **`usePerformance`**：初始化时设置 `blurCoefficient`、根节点 `--ui-blur`，并令 `isLinuxChrome === true` 以统一分支。
 - **[`BookmarkCard.vue`](frontend/src/components/BookmarkCard.vue)**：根据 `isLinuxChrome` 决定 `warpStyle` 是否在悬停时才附加 `url(#glass-filter-shared)`。
-- **[`App.vue`](frontend/src/App.vue)**：`filterStdDeviation` 在 `isLinuxChrome` 为真时使用 `base * 0.7`。
+- **[`GlassFilter.vue`](frontend/src/components/GlassFilter.vue)**：`filterStdDeviation` 在 `isLinuxChrome` 为真时使用 `base * 0.7`。
 
 ### 体验与维护说明
 
@@ -185,3 +185,25 @@ Liquid Glass 依赖 **`backdrop-filter`** 与 **复杂 SVG 滤镜链**（多张 
 
 - 原始需求摘要：[`design_doc.md`](design_doc.md)
 - 主题开发指南：[`docs/theme-development.md`](docs/theme-development.md)
+
+
+## 移动端滚动与玻璃调参
+
+- 页面外壳固定，书签在独立区域内滚动，滚动边界不再传递给整个文档；适配动态视口与刘海屏/底部安全区。桌面导航区域使用可用宽度，不再限制为 1400px。
+- 触屏编辑时长按约 180ms 才开始拖动，普通滑动用于浏览。触摸操作不会触发鼠标倾斜，也不会残留悬停滤镜。
+- 支持添加到主屏幕后以独立窗口打开（manifest 的 `standalone` 模式）。在 iPhone 上使用 Safari 分享菜单的“添加到主屏幕”，再从该图标进入。普通浏览器标签页的地址栏由浏览器控制。
+- 设置面板增加真实卡片渲染器的实时预览。模糊、饱和度、圆角直接作用于卡片；折射和色差在正式卡片鼠标悬停时显示，预览中始终显示；弹性控制倾斜幅度和回弹，触屏预览以倾斜姿态呈现其变化。
+- 玻璃滤镜保留中心原色，RGB 分离限制在边缘。较高的色差值仍会产生彩色边缘，这是预期效果。
+- 这些修改没有数据库迁移、字段调整或默认值重置；加载页面和打开设置只读取参数，用户实际调整控件时才按原有 API 保存对应项。
+
+### 前端回归验证
+
+```bash
+cd frontend
+npm ci
+npx playwright install chromium
+npm run test:e2e
+npm run build
+```
+
+浏览器测试完全拦截 `/api/` 请求，使用模拟书签和参数，不连接真实后端。覆盖移动端触摸滚动、桌面宽度、六个玻璃参数、中心颜色保护、设置弹窗与零自动写入。移动视口测试使用 Chromium 模拟；iOS Safari 的系统下拉刷新、地址栏变化和主屏幕安全区仍需真机验证。

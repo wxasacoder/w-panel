@@ -18,8 +18,8 @@ const { editMode, toggle } = useEditMode()
 <style scoped lang="scss">
 .edit-toggle {
   position: fixed;
-  bottom: 28px;
-  right: 28px;
+  bottom: calc(28px + env(safe-area-inset-bottom));
+  right: calc(28px + env(safe-area-inset-right));
   z-index: 900;
   display: flex;
   align-items: center;

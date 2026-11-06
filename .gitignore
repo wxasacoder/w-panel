@@ -18,3 +18,7 @@ frontend/dist/
 
 # Qoder
 .qoder/
+
+# Browser tests
+frontend/test-results/
+frontend/playwright-report/

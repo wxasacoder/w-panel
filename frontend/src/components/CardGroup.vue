@@ -15,6 +15,9 @@
       v-model="cards"
       :group="'cards'"
       :disabled="!editMode"
+      :delay="180"
+      :delay-on-touch-only="true"
+      :touch-start-threshold="5"
       class="card-grid"
       ghost-class="ghost"
       :data-group-id="group.id"
@@ -136,7 +139,7 @@ const onDragEnd = async (evt: any) => {
 
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
   gap: 12px;
 }
 

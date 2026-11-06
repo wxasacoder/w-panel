@@ -3,6 +3,9 @@
     <VueDraggable
       v-model="groupList"
       :disabled="!editMode"
+      :delay="180"
+      :delay-on-touch-only="true"
+      :touch-start-threshold="5"
       handle=".group-title"
       ghost-class="group-ghost"
       @end="onGroupDragEnd"
@@ -76,12 +79,13 @@ const onGroupDragEnd = async () => {
 .navigation-grid {
   position: relative;
   z-index: 1;
-  padding: 40px 48px 100px;
-  max-width: 1400px;
+  padding: calc(40px + env(safe-area-inset-top)) calc(48px + env(safe-area-inset-right)) calc(100px + env(safe-area-inset-bottom)) calc(48px + env(safe-area-inset-left));
+  width: 100%;
+  min-height: 100%;
   margin: 0 auto;
 
   @media (max-width: 768px) {
-    padding: 24px 20px 100px;
+    padding: calc(24px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right)) calc(100px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left));
   }
 }
 

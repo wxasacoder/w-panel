@@ -139,6 +139,8 @@ function applyTheme(themeId: string) {
   root.setAttribute('data-theme', themeId)
 }
 
+watch(currentTheme, (val) => applyTheme(val))
+
 export function useTheme() {
   const loadSettings = async () => {
     try {
@@ -273,8 +275,6 @@ export function useTheme() {
     entry.ref.value = val
     await apiUpdateSettings({ [entry.key]: String(val) })
   }
-
-  watch(currentTheme, (val) => applyTheme(val))
 
   return {
     currentTheme,

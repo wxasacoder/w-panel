@@ -48,6 +48,10 @@
 
         <div class="form-group glass-section">
           <label class="section-label">Glass Effect</label>
+          <div class="glass-preview">
+            <BookmarkCard :card="previewCard" preview />
+          </div>
+          <p class="glass-help">实时预览 · 折射与色差作用于边缘，弹性控制倾斜幅度。正式卡片在鼠标悬停时显示动态效果。</p>
           <div class="glass-param">
             <label>Displacement: {{ glassDisplacementScale }}</label>
             <input type="range" min="0" max="200" step="5" :value="glassDisplacementScale" @input="onGlassParam('displacementScale', $event)" class="slider" />
@@ -111,6 +115,14 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { uploadFile, getWallpapers, addWallpaper, deleteWallpaper, type WallpaperItem } from '../api'
 import { useTheme } from '../composables/useTheme'
 import GlassSelect from './GlassSelect.vue'
+import BookmarkCard from './BookmarkCard.vue'
+import type { Card } from '../api'
+
+const previewCard: Card = {
+  id: 0, group_id: 0, title: 'Glass Preview', url: 'https://w-panel.example',
+  icon_type: 'letter', icon_value: 'W', icon_bg_color: '#6366f1', open_mode: '_blank',
+  sort_order: 0, created_at: '', updated_at: '',
+}
 
 const weatherOptions = [
   { value: 'none', label: 'None' },
@@ -258,7 +270,7 @@ const clearBg = () => {
 <style scoped lang="scss">
 .settings-panel {
   width: 520px;
-  max-width: 90vw;
+  max-width: calc(100vw - 32px - env(safe-area-inset-left) - env(safe-area-inset-right));
 }
 
 .bg-controls {
@@ -269,7 +281,7 @@ const clearBg = () => {
 
 .wallpaper-gallery {
   display: grid;
-  grid-template-columns: repeat(3, 100px);
+  grid-template-columns: repeat(3, minmax(0, 100px));
   justify-content: center;
   gap: 6px;
   margin-top: 6px;
@@ -298,7 +310,7 @@ const clearBg = () => {
   cursor: pointer;
   border: 2px solid rgba(255, 255, 255, 0.1);
   transition: all 0.2s ease;
-  width: 100px;
+  width: 100%;
   height: 62px;
 
   img {
@@ -379,6 +391,21 @@ const clearBg = () => {
 .btn-small {
   padding: 4px 10px;
   font-size: 0.75rem;
+}
+
+.glass-preview {
+  padding: 24px 12px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  background: radial-gradient(circle at 80% 20%, #e5b570, transparent 50%),
+    linear-gradient(135deg, #16445a 20%, #438e92 45%, #152337 70%);
+}
+
+.glass-help {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  margin-bottom: 14px;
 }
 
 .slider {

@@ -1,13 +1,14 @@
 <template>
   <a
-    :href="card.url"
+    :href="preview ? undefined : card.url"
     :target="card.open_mode"
     class="bookmark-card"
-    :class="{ 'edit-mode': editMode }"
+    :class="{ 'edit-mode': editMode && !preview }"
     :style="cardDynamicStyle"
     @click.prevent="handleClick"
-    @mousemove="onCardMouseMove"
-    @mouseleave="onCardMouseLeave"
+    @pointermove="onCardPointerMove"
+    @pointerleave="onCardPointerLeave"
+    @pointercancel="onCardPointerLeave"
   >
     <!-- Glass warp layer: backdrop-filter captures background, shared SVG filter adds displacement -->
     <span class="glass-warp" :style="warpStyle" />
@@ -37,20 +38,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onUnmounted } from 'vue'
 import type { Card } from '../api'
 import { useEditMode } from '../composables/useEditMode'
 import { useTheme } from '../composables/useTheme'
 import { usePerformance } from '../composables/usePerformance'
 
-const props = defineProps<{ card: Card }>()
+const props = defineProps<{ card: Card; preview?: boolean }>()
 const emit = defineEmits<{ delete: [id: number]; edit: [card: Card] }>()
 
 const { editMode } = useEditMode()
 const {
   glassBlurAmount, glassSaturation,
   glassElasticity, glassCornerRadius,
-  backgroundImage,
 } = useTheme()
 const { blurCoefficient, isLinuxChrome } = usePerformance()
 
@@ -103,13 +103,14 @@ const blurPx = computed(() => 4 + glassBlurAmount.value * blurCoefficient.value)
 const warpStyle = computed(() => {
   const blur = `blur(${blurPx.value}px) saturate(${glassSaturation.value}%)`
   if (isLinuxChrome.value) {
-    return isHovered.value
-      ? { filter: 'url(#glass-filter-shared)', backdropFilter: blur }
-      : { backdropFilter: blur }
+    return (isHovered.value || props.preview)
+      ? { filter: 'url(#glass-filter-shared)', backdropFilter: blur, WebkitBackdropFilter: blur }
+      : { backdropFilter: blur, WebkitBackdropFilter: blur }
   }
   return {
     filter: 'url(#glass-filter-shared)',
     backdropFilter: blur,
+    WebkitBackdropFilter: blur,
   }
 })
 
@@ -125,11 +126,16 @@ const transitionCurve = computed(() => {
   return `cubic-bezier(0.2, ${overshoot.toFixed(2)}, 0.2, 1)`
 })
 
-const cardDynamicStyle = ref<Record<string, string>>({})
+const pointerStyle = ref<Record<string, string>>({})
+const cardDynamicStyle = computed(() => props.preview && !isHovered.value
+  ? { transform: `perspective(800px) rotateX(${maxTilt.value * 0.2}deg) rotateY(${-maxTilt.value * 0.2}deg) translateZ(${lift.value}px)` }
+  : pointerStyle.value)
 
 let rafId = 0
-function onCardMouseMove(e: MouseEvent) {
-  if (editMode.value) return
+function onCardPointerMove(e: PointerEvent) {
+  // Ignore touch-generated compatibility mouse events: they can leave a tilted,
+  // filtered card stuck on screen after a swipe.
+  if (e.pointerType !== 'mouse' || (editMode.value && !props.preview)) return
   isHovered.value = true
   cancelAnimationFrame(rafId)
   const clientX = e.clientX
@@ -146,7 +152,7 @@ function onCardMouseMove(e: MouseEvent) {
     const shadowX = Math.round((0.5 - nx) * 14)
     const shadowY = Math.round(8 + ny * 8)
 
-    cardDynamicStyle.value = {
+    pointerStyle.value = {
       transform: `perspective(800px) rotateX(${tiltX.toFixed(1)}deg) rotateY(${tiltY.toFixed(1)}deg) translateZ(${lift.value}px)`,
       'box-shadow': `${shadowX}px ${shadowY}px 40px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.4)`,
       transition: 'none',
@@ -154,16 +160,19 @@ function onCardMouseMove(e: MouseEvent) {
   })
 }
 
-function onCardMouseLeave() {
+function onCardPointerLeave() {
   cancelAnimationFrame(rafId)
   isHovered.value = false
-  cardDynamicStyle.value = {
+  pointerStyle.value = {
     transition: `transform ${transitionDuration.value}s ${transitionCurve.value}, box-shadow ${transitionDuration.value}s ${transitionCurve.value}`,
   }
 }
 
+watch(editMode, () => onCardPointerLeave())
+onUnmounted(() => cancelAnimationFrame(rafId))
+
 const handleClick = () => {
-  if (editMode.value) return
+  if (editMode.value || props.preview) return
   window.open(props.card.url, props.card.open_mode)
 }
 </script>
@@ -190,7 +199,7 @@ const handleClick = () => {
   contain-intrinsic-size: auto 70px;
 
   &:hover {
-    will-change: transform, box-shadow;
+    will-change: transform;
   }
 
   &.edit-mode {

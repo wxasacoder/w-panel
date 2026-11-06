@@ -79,16 +79,14 @@ export class RainRenderer {
 
   private drawFallingRain() {
     const ctx = this.ctx
+    ctx.lineCap = 'round'
     for (const drop of this.fallingDrops) {
-      ctx.save()
       ctx.strokeStyle = `rgba(174, 194, 224, ${drop.opacity})`
       ctx.lineWidth = drop.thickness
-      ctx.lineCap = 'round'
       ctx.beginPath()
       ctx.moveTo(drop.x, drop.y)
       ctx.lineTo(drop.x + 1, drop.y + drop.length)
       ctx.stroke()
-      ctx.restore()
 
       drop.y += drop.speed
       if (drop.y > this.canvas.height + drop.length) {
